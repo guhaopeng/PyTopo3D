@@ -99,8 +99,18 @@ def load_matlab_data(matlab_data_path: str) -> Dict[str, Any]:
     try:
         with open(matlab_data_path, 'r') as f:
             data = json.load(f)
+        
+        # Handle MATLAB 'n' prefix in keys (e.g., 'n8192' -> '8192')
+        # MATLAB doesn't allow numeric field names, so we add 'n' prefix
+        fixed_data = {}
+        for key, value in data.items():
+            if key.startswith('n') and key[1:].isdigit():
+                fixed_data[key[1:]] = value
+            else:
+                fixed_data[key] = value
+        
         print(f"Loaded MATLAB benchmark data from {matlab_data_path}")
-        return data
+        return fixed_data
     except Exception as e:
         print(f"Error loading MATLAB data from {matlab_data_path}: {e}")
         return {}
@@ -108,62 +118,113 @@ def load_matlab_data(matlab_data_path: str) -> Dict[str, Any]:
 
 def run_python_benchmarks(args: argparse.Namespace) -> Dict[str, Any]:
     """
-    Run Python benchmarks for specified problem sizes.
+    Run Python benchmarks for various problem sizes.
     
     Args:
-        args: Command-line arguments
+        args: Command line arguments
         
     Returns:
         Dictionary with benchmark results
     """
-    # Parse sizes
-    try:
-        sizes = [int(s.strip()) for s in args.sizes.split(",")]
-    except ValueError:
-        print(f"Error: Invalid size format: {args.sizes}")
-        print("Expected format: comma-separated integers (e.g., 8,16,32,64)")
-        return {}
+    sizes = [int(s) for s in args.sizes.split(",")]
+    results = {}
     
-    # Filter by max size if specified
-    if args.max_size:
-        sizes = [s for s in sizes if s <= args.max_size]
+    # Filter sizes by max_size if provided
+    if args.max_size is not None:
+        sizes = [s for s in sizes if s * (s//2) * (s//3) <= args.max_size]
     
-    if not sizes:
-        print("No valid sizes to benchmark")
-        return {}
+    # Add large-scale problem sizes
+    large_scale_sizes = [64, 128]
     
-    print(f"Running Python benchmarks for sizes: {sizes}")
+    # Combine regular and large-scale sizes, removing duplicates
+    all_sizes = sorted(set(sizes + large_scale_sizes))
     
-    # Run scaling test using main.py
-    cmd = [
-        "python", "main.py",
-        "--scaling-test",
-        f"--scaling-sizes={','.join(str(s) for s in sizes)}",
-        f"--volfrac={args.volfrac}",
-        f"--penal={args.penal}",
-        f"--tolx={args.tolx}",
-        f"--maxloop={args.maxloop}",
-        f"--benchmark-dir={args.output_dir}"
-    ]
+    print(f"Running Python benchmarks for sizes: {all_sizes}")
     
-    try:
-        print(f"Running command: {' '.join(cmd)}")
-        subprocess.run(cmd, check=True)
+    for size in all_sizes:
+        nelx = size
+        nely = max(1, size // 2)
+        nelz = max(1, size // 3)
+        elements = nelx * nely * nelz
         
-        # Load the results
-        results_path = os.path.join(args.output_dir, "scaling_test_results.json")
-        if os.path.exists(results_path):
-            with open(results_path, 'r') as f:
-                results = json.load(f)
-            print(f"Loaded Python benchmark results from {results_path}")
-            return results
-        else:
-            print(f"Error: Benchmark results file not found at {results_path}")
-            return {}
+        # Check if this problem size is too large
+        if args.max_size is not None and elements > args.max_size:
+            print(f"Skipping size {nelx}x{nely}x{nelz} ({elements} elements) - exceeds max size {args.max_size}")
+            continue
             
-    except subprocess.CalledProcessError as e:
-        print(f"Error running Python benchmarks: {e}")
-        return {}
+        # For large problems, reduce iterations and adjust tolerance to save time
+        maxloop = args.maxloop
+        tolx = args.tolx
+        
+        if elements > 100000:  # For problems with more than 100k elements
+            print(f"Large problem detected ({elements} elements) - adjusting parameters")
+            maxloop = min(args.maxloop, 50)  # Reduce max iterations for large problems
+            tolx = max(args.tolx, 0.02)      # Use higher tolerance for large problems
+            print(f"Adjusted parameters: maxloop={maxloop}, tolx={tolx}")
+        
+        print(f"\nRunning benchmark for size {nelx}x{nely}x{nelz} ({elements} elements)")
+        
+        # Run the benchmark
+        output_dir = os.path.join(args.output_dir, f"size_{nelx}x{nely}x{nelz}")
+        os.makedirs(output_dir, exist_ok=True)
+        
+        cmd = [
+            "python", "main.py",
+            "--nelx", str(nelx),
+            "--nely", str(nely),
+            "--nelz", str(nelz),
+            "--volfrac", str(args.volfrac),
+            "--penal", str(args.penal),
+            "--tolx", str(tolx),
+            "--maxloop", str(maxloop),
+            "--benchmark",
+            "--save-benchmark",
+            "--benchmark-dir", output_dir
+        ]
+        
+        try:
+            # Release memory before running large problems
+            if elements > 100000:
+                if sys.platform.startswith('win'):
+                    # On Windows
+                    import ctypes
+                    ctypes.windll.kernel32.SetProcessWorkingSetSize(-1, -1, -1)
+                else:
+                    # On Linux/Unix/MacOS
+                    import gc
+                    gc.collect()
+                
+            # Start the subprocess
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            stdout, stderr = process.communicate()
+            
+            if process.returncode != 0:
+                print(f"Error running benchmark for size {nelx}x{nely}x{nelz}:")
+                print(stderr)
+                continue
+                
+            # Load the benchmark results
+            benchmark_file = os.path.join(output_dir, f"benchmark_size_{elements}_nelx{nelx}_nely{nely}_nelz{nelz}_py.json")
+            if os.path.exists(benchmark_file):
+                with open(benchmark_file, 'r') as f:
+                    benchmark_data = json.load(f)
+                results[str(elements)] = benchmark_data
+                print(f"✓ Benchmark completed: {nelx}x{nely}x{nelz} - {benchmark_data['total_time_seconds']:.2f}s, " +
+                      f"{benchmark_data.get('peak_memory_mb', 0):.2f}MB")
+            else:
+                print(f"✗ Benchmark file not found: {benchmark_file}")
+                
+        except Exception as e:
+            print(f"Error running benchmark for size {nelx}x{nely}x{nelz}: {e}")
+    
+    # Save combined results
+    if results:
+        output_file = os.path.join(args.output_dir, "scaling_test_results.json")
+        with open(output_file, 'w') as f:
+            json.dump(results, f, indent=2)
+        print(f"\nBenchmark results saved to {output_file}")
+    
+    return results
 
 
 def generate_comparison_plots(
