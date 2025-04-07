@@ -282,7 +282,7 @@ def run_benchmarks(args: argparse.Namespace) -> Dict[str, Any]:
                 continue
             
             # Find benchmark results file
-            benchmark_file = os.path.join(output_dir, f"benchmark_size_{elements}_nelx{nelx}_nely{nely}_nelz{nelz}_py.json")
+            benchmark_file = os.path.join(output_dir, f"benchmark_size_{elements}_nelx{nelx}_nely{nely}_nelz{nelz}.json")
             if os.path.exists(benchmark_file):
                 with open(benchmark_file, 'r') as f:
                     benchmark_data = json.load(f)
