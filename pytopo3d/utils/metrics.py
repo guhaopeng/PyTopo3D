@@ -34,6 +34,7 @@ def collect_metrics(
     run_time: float = 0.0,
     gif_path: Optional[str] = None,
     stl_exported: bool = False,
+    benchmark_results: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Collect metrics about the optimization run.
@@ -62,6 +63,7 @@ def collect_metrics(
         run_time: Optimization runtime in seconds
         gif_path: Path to animation GIF if created
         stl_exported: Whether STL export was successful
+        benchmark_results: Detailed benchmark results if available
 
     Returns:
         Dictionary of metrics
@@ -71,6 +73,7 @@ def collect_metrics(
         "nelx": nelx,
         "nely": nely,
         "nelz": nelz,
+        "total_elements": nelx * nely * nelz,
         "volfrac": volfrac,
         "penal": penal,
         "rmin": rmin,
@@ -105,6 +108,10 @@ def collect_metrics(
         metrics["stl_level"] = stl_level
         metrics["stl_smoothed"] = smooth_stl
         metrics["stl_smooth_iterations"] = smooth_iterations
+    
+    # Add benchmark metrics if available
+    if benchmark_results:
+        metrics["benchmark"] = benchmark_results
 
     return metrics
 

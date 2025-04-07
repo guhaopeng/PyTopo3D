@@ -154,6 +154,46 @@ def parse_args() -> argparse.Namespace:
         "--obstacle-config", type=str, help="Path to a JSON file defining obstacles"
     )
 
+    # Benchmarking parameters
+    benchmark_group = parser.add_argument_group("Benchmarking parameters")
+    benchmark_group.add_argument(
+        "--benchmark",
+        action="store_true",
+        help="Enable detailed performance benchmarking",
+    )
+    benchmark_group.add_argument(
+        "--save-benchmark",
+        action="store_true",
+        help="Save benchmark results to a file",
+    )
+    benchmark_group.add_argument(
+        "--benchmark-dir",
+        type=str,
+        default="results/benchmarks",
+        help="Directory to save benchmark results",
+    )
+    benchmark_group.add_argument(
+        "--benchmark-matlab",
+        type=str,
+        help="Path to MATLAB benchmark data for comparison",
+    )
+    benchmark_group.add_argument(
+        "--generate-plots",
+        action="store_true",
+        help="Generate benchmark comparison plots",
+    )
+    benchmark_group.add_argument(
+        "--scaling-test",
+        action="store_true",
+        help="Run a scaling test with multiple problem sizes",
+    )
+    benchmark_group.add_argument(
+        "--scaling-sizes",
+        type=str,
+        default="8,16,32,64",
+        help="Comma-separated list of element sizes for scaling test (default: 8,16,32,64)"
+    )
+
     # Logging parameters
     log_group = parser.add_argument_group("Logging parameters")
     log_group.add_argument(

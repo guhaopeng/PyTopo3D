@@ -107,7 +107,10 @@ def execute_optimization(
     animation_frequency: int = 10,
     logger: logging.Logger = None,
     combined_obstacle_mask: Optional[np.ndarray] = None,
-) -> Tuple[np.ndarray, Optional[Dict], float]:
+    benchmark: bool = False, 
+    save_benchmark: bool = False,
+    benchmark_dir: Optional[str] = None,
+) -> Tuple[np.ndarray, Optional[Dict], float, Optional[Dict]]:
     """
     Run the topology optimization process.
 
@@ -125,10 +128,26 @@ def execute_optimization(
         animation_frequency: Frequency of saving frames for animation
         logger: Configured logger
         combined_obstacle_mask: Combined obstacle and design space mask
+        benchmark: Whether to perform detailed performance benchmarking
+        save_benchmark: Whether to save benchmark results to a file
+        benchmark_dir: Directory to save benchmark results (if None, uses default)
 
     Returns:
-        Tuple containing optimization result, history (if saved), and runtime in seconds
+        Tuple containing optimization result, history (if saved), runtime in seconds,
+        and benchmark results (if benchmarking was enabled)
     """
+    # Initialize benchmarking if requested
+    benchmark_tracker = None
+    if benchmark:
+        try:
+            from pytopo3d.utils.benchmarking import BenchmarkTracker
+            benchmark_tracker = BenchmarkTracker(track_memory=True, track_detailed_timing=True)
+            if logger:
+                logger.info("Benchmarking enabled - tracking detailed performance metrics")
+        except ImportError:
+            if logger:
+                logger.warning("Benchmarking module not found - continuing without benchmarking")
+    
     # Run the optimization with timing
     if logger:
         logger.info(
@@ -155,6 +174,7 @@ def execute_optimization(
         maxloop=maxloop,
         save_history=create_animation,
         history_frequency=animation_frequency,
+        benchmark_tracker=benchmark_tracker,
     )
 
     # Check if we got history back
@@ -172,8 +192,41 @@ def execute_optimization(
     run_time = end_time - start_time
     if logger:
         logger.debug(f"Optimization finished in {run_time:.2f} seconds")
+    
+    # Process benchmark results if benchmarking was enabled
+    benchmark_results = None
+    if benchmark_tracker:
+        benchmark_tracker.finalize()
+        benchmark_results = benchmark_tracker.get_summary()
+        
+        # Log benchmark summary
+        if logger:
+            logger.info(f"Benchmark results: total time={benchmark_results['total_time_seconds']:.2f}s")
+            if 'phases' in benchmark_results:
+                logger.info("Phase timing breakdown:")
+                for phase, data in benchmark_results['phases'].items():
+                    logger.info(f"  {phase}: {data['total_seconds']:.2f}s ({data['percentage']:.1f}%)")
+            
+            if 'peak_memory_mb' in benchmark_results:
+                logger.info(f"Peak memory usage: {benchmark_results['peak_memory_mb']:.1f} MB")
+        
+        # Save benchmark results to file if requested
+        if save_benchmark and benchmark_tracker:
+            if benchmark_dir is None:
+                benchmark_dir = "results/benchmarks"
+            
+            os.makedirs(benchmark_dir, exist_ok=True)
+            problem_size = nelx * nely * nelz
+            benchmark_file = os.path.join(
+                benchmark_dir, 
+                f"benchmark_size_{problem_size}_nelx{nelx}_nely{nely}_nelz{nelz}.json"
+            )
+            benchmark_tracker.save_to_file(benchmark_file)
+            
+            if logger:
+                logger.info(f"Benchmark results saved to {benchmark_file}")
 
-    return xPhys, history, run_time
+    return xPhys, history, run_time, benchmark_results
 
 
 def export_result_to_stl(

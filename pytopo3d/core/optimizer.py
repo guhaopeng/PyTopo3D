@@ -5,6 +5,7 @@ This module contains the main top3d function that performs the optimization.
 """
 
 import time
+from typing import Dict, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -36,6 +37,7 @@ def top3d(
     maxloop: int = 2000,
     save_history: bool = False,
     history_frequency: int = 10,
+    benchmark_tracker=None,
 ):
     """
     Accelerated 3D Topology Optimization with optional obstacle region.
@@ -66,6 +68,8 @@ def top3d(
         Whether to save the optimization history for creating animations. Default is False.
     history_frequency : int, optional
         How often to save the density array to the history (every N iterations). Default is 10.
+    benchmark_tracker : BenchmarkTracker, optional
+        If provided, will track detailed performance metrics during optimization.
 
     Returns
     -------
@@ -102,6 +106,10 @@ def top3d(
         else None
     )
 
+    # Start benchmark timing for initialization phase
+    if benchmark_tracker:
+        benchmark_tracker.start_phase("initialization")
+
     # ---------------------------
     # Build force vector & supports
     logger.debug("Building force vector and supports")
@@ -136,6 +144,9 @@ def top3d(
     # Apply filter
     xPhys = (H * x.ravel(order="F") / Hs).reshape((nely, nelx, nelz), order="F")
 
+    if benchmark_tracker:
+        benchmark_tracker.end_phase()
+
     loop = 0
     change = 1.0
     # Initialize previous objective value for delta tracking
@@ -160,6 +171,11 @@ def top3d(
         loop += 1
         t_start = time.time()
 
+        # Start timing iteration if benchmarking
+        if benchmark_tracker:
+            benchmark_tracker.start_iteration()
+            benchmark_tracker.start_phase("assembly")
+
         # 1) Assemble stiffness values for each element
         xFlat = xPhys.ravel(order="F")  # length = nele
         stiff_vals = Emin + (xFlat**penal) * (E0 - Emin)  # shape (nele,)
@@ -171,12 +187,20 @@ def top3d(
         # ensuring that elements with shared DOFs properly contribute to the global stiffness matrix
         K = sp.csr_matrix((sK_full, (iK0, jK0)), shape=(ndof, ndof))
 
+        if benchmark_tracker:
+            benchmark_tracker.end_phase()
+            benchmark_tracker.start_phase("solve")
+
         # 3) Extract submatrix for free DOFs and solve
         K_ff = K[freedofs0, :][:, freedofs0]
         F_f = F[freedofs0]
         U_f = solver(K_ff, F_f)
         U[:] = 0.0
         U[freedofs0] = U_f
+
+        if benchmark_tracker:
+            benchmark_tracker.end_phase()
+            benchmark_tracker.start_phase("compliance")
 
         # 4) Compute compliance and sensitivities
         ce_flat = element_compliance(U, edofMat, KE)  # shape (nele,)
@@ -187,8 +211,16 @@ def top3d(
         c_delta = c - c_prev
         c_prev = c
 
+        if benchmark_tracker:
+            benchmark_tracker.end_phase()
+            benchmark_tracker.start_phase("sensitivity")
+
         dc = -penal * (E0 - Emin) * xPhys ** (penal - 1) * ce
         dv = np.ones_like(xPhys)
+
+        if benchmark_tracker:
+            benchmark_tracker.end_phase()
+            benchmark_tracker.start_phase("filter")
 
         # 5) Filter sensitivities
         dc = (H * (dc.ravel(order="F") / Hs)).reshape((nely, nelx, nelz), order="F")
@@ -197,6 +229,10 @@ def top3d(
         # Force zero sensitivities in obstacle region, so they remain at x=0.
         dc[obstacle_mask] = 0.0
         dv[obstacle_mask] = 0.0
+
+        if benchmark_tracker:
+            benchmark_tracker.end_phase()
+            benchmark_tracker.start_phase("update")
 
         # 6) Optimality Criteria update via bisection
         xnew, change = optimality_criteria_update(
@@ -211,6 +247,10 @@ def top3d(
         xPhys[obstacle_mask] = 0.0
 
         x = xnew
+
+        if benchmark_tracker:
+            benchmark_tracker.end_phase()
+            benchmark_tracker.start_phase("misc")
 
         iter_time = time.time() - t_start
 
@@ -235,6 +275,10 @@ def top3d(
             plt.clf()
             display_3D(xPhys, disp_thres)
             plt.pause(0.01)
+
+        if benchmark_tracker:
+            benchmark_tracker.end_phase()
+            benchmark_tracker.end_iteration()
 
     # Log final results
     if loop >= maxloop:
