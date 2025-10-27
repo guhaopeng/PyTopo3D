@@ -1,8 +1,9 @@
 """
-Main optimizer for 3-D topology optimization – fixed CSR scatter version
+Main optimizer for 3-D topology optimization – fixed CSR scatter version 
 (24 April 2025).
 
-Changes relative to the previous refactor
+ 
+Changes relative to the previous refactor 
 -----------------------------------------
 * Keep the 576 × nele COO coordinates (with duplicates) **and** build a
   mapping `dup2uniq` → CSR.data so we can scatter-add each iteration.
@@ -39,6 +40,7 @@ if HAS_CUPY:
 # ──────────────────────────────────────────────────────────────────────────
 def _make_scatter_map(i_full, j_full, ndof):
     """Memory– and speed-optimised scatter map builder."""
+    # 构建 CSR 格式的散射映射，用于高效的稀疏矩阵-向量乘法
     linear = i_full.astype(np.int64) * ndof + j_full        # 1-D key
     uniq_lin, dup2uniq = np.unique(linear, return_inverse=True)
     i_uniq = uniq_lin // ndof
@@ -75,12 +77,12 @@ def top3d(
     nele = nelx * nely * nelz
     ndof = 3 * (nelx + 1) * (nely + 1) * (nelz + 1)
 
-    obstacle_mask = (
+    obstacle_mask = ( # 障碍物掩码，用于标记设计域中的障碍物
         np.zeros((nely, nelx, nelz), dtype=bool)
         if obstacle_mask is None
         else obstacle_mask
     )
-    design_nele = nele - obstacle_mask.sum()
+    design_nele = nele - obstacle_mask.sum() # 设计域中的元素数量
     logger.debug(f"design elements: {design_nele}/{nele}")
 
     # History dict
@@ -94,7 +96,7 @@ def top3d(
     F = build_force_vector(nelx, nely, nelz, ndof, force_field)
     freedofs0, _ = build_supports(nelx, nely, nelz, ndof, support_mask)
 
-    # Element stiffness
+    # Element stiffness # 元素刚度矩阵
     KE = lk_H8(nu)
     edofMat, iK, jK = build_edof(nelx, nely, nelz)
     iK0, jK0 = iK - 1, jK - 1
@@ -163,9 +165,9 @@ def top3d(
 
         # ================================================= GPU
         if gpu:
-            # Element-wise stiffness coefficients
+            # Element-wise stiffness coefficients # 元素刚度系数
             stiff_gpu = Emin + (xPhys_gpu.ravel(order="F") ** penal) * (E0 - Emin)
-            elem_vals_gpu = cp.kron(stiff_gpu, KE_gpu.ravel())  # 576×nele
+            elem_vals_gpu = cp.kron(stiff_gpu, KE_gpu.ravel())  # 576×nele # 每个元素的刚度系数
 
             # Scatter-add into CSR.data
             K_gpu.data.fill(0.0)
@@ -177,7 +179,7 @@ def top3d(
             U_gpu.fill(0)
             U_gpu[freedofs0_gpu] = Uf_gpu
 
-            # Compliance & sensitivities
+            # Compliance & sensitivities  # 计算目标函数值和灵敏度
             ce_flat_gpu = element_compliance(U_gpu, cp.asarray(edofMat), KE_gpu)
             ce_gpu = ce_flat_gpu.reshape(nely, nelx, nelz, order="F")
             c = cp.sum((Emin + xPhys_gpu ** penal * (E0 - Emin)) * ce_gpu).item()

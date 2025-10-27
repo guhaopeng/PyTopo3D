@@ -2,6 +2,7 @@
 """
 Command-line entry point for the pytopo3d package.
 This module provides the main entry point when installed as a package.
+pytopo3d 包的命令行入口点。此模块提供了作为包安装时的主入口点。
 """
 
 import sys
@@ -32,6 +33,9 @@ def main(args: Optional[List[str]] = None) -> int:
 
     Returns:
         Exit code (0 for success, non-zero for errors)
+        从命令行参数运行优化优化的主函数。
+         参数:args:命令行参数（默认值为 sys.argv [1:]）
+           返回:退出代码（0 表示成功，非零表示错误）
     """
     # Parse command-line arguments
     if args is None:

@@ -23,7 +23,8 @@ def voxel_to_stl(
 ) -> Union[str, trimesh.Trimesh]:
     """
     Convert a voxel representation (.npy file or np.ndarray) to an STL mesh file or trimesh object.
-
+    # 将 voxel 表示（.npy 文件或 np.ndarray）转换为 STL 网格文件或 trimesh 对象。
+    
     Parameters:
     -----------
     input_file : Union[str, np.ndarray]
@@ -43,6 +44,7 @@ def voxel_to_stl(
         Number of iterations for mesh smoothing (default: 5)
     upscale_factor : Optional[int], optional
         Factor to upscale voxel resolution before meshing (default: None)
+        # 上采样因子，用于在网格化之前增加 voxel 分辨率（默认值：None）
 
     Returns:
     --------
@@ -50,6 +52,7 @@ def voxel_to_stl(
         The path to the saved STL file if output_file is provided, otherwise the generated trimesh.Trimesh object.
     """
     # 1. Load the voxel data from the .npy file or use the provided array
+    # 从 .npy 文件加载 voxel 数据或使用提供的数组
     if isinstance(input_file, str):
         voxel_data: np.ndarray = np.load(input_file)
     elif isinstance(input_file, np.ndarray):
@@ -58,6 +61,7 @@ def voxel_to_stl(
         raise TypeError("input_file must be a string path or a NumPy array.")
 
     # 2. Pad the voxel data with zeros to ensure a closed mesh
+    # 用零填充 voxel 数据，确保生成的网格是封闭的
     if padding > 0:
         padded_data: np.ndarray = np.pad(
             voxel_data, padding, mode="constant", constant_values=0
@@ -66,18 +70,23 @@ def voxel_to_stl(
         padded_data = voxel_data
 
     # 3. Upscale the voxel data if requested
+    # 如果请求上采样，增加 voxel 分辨率
     if upscale_factor and upscale_factor > 1:
         # Get the original shape
+        # 获取原始形状
         original_shape: np.ndarray = np.array(padded_data.shape)
         # Calculate the new shape
         new_shape: np.ndarray = original_shape * upscale_factor
         # Create coordinates for the original data
+        # 创建原始数据的坐标
         orig_coords: List[np.ndarray] = [np.arange(s) for s in original_shape]
         # Create coordinates for the upscaled data
+        # 创建上采样数据的坐标
         new_coords: List[np.ndarray] = [
             np.linspace(0, s - 1, ns) for s, ns in zip(original_shape, new_shape)
         ]
         # Use scipy's map_coordinates for smooth interpolation
+        # 使用 scipy 的 map_coordinates 进行平滑插值
         grid: List[np.ndarray] = np.meshgrid(*new_coords, indexing="ij")
         upscaled_data: np.ndarray = ndimage.map_coordinates(
             padded_data, grid, order=3, mode="nearest"
@@ -85,17 +94,20 @@ def voxel_to_stl(
         padded_data = upscaled_data
 
     # 4. Generate a triangulated mesh using marching cubes algorithm
+    # 使用 marching cubes 算法生成三角网格
     vertices: np.ndarray
     faces: np.ndarray
     normals: np.ndarray
     vertices, faces, normals, _ = measure.marching_cubes(padded_data, level=level)
 
     # 5. Create a mesh object
+    # 创建一个网格对象
     mesh: trimesh.Trimesh = trimesh.Trimesh(
         vertices=vertices, faces=faces, normals=normals
     )
 
     # 6. Apply Laplacian smoothing to the mesh if requested
+    # 如果请求上采样，增加 voxel 分辨率
     if smooth_mesh and smooth_iterations > 0:
         # Check if the mesh has any vertices to smooth
         if len(mesh.vertices) > 0:
@@ -104,6 +116,7 @@ def voxel_to_stl(
                 trimesh.smoothing.filter_laplacian(mesh, iterations=1, lamb=0.5)
 
     # 7. Fix mesh if requested (fill holes, remove duplicate vertices, etc.)
+    # 如果请求修复网格（填充空洞、移除重复顶点等）
     if fix_mesh:
         # Make sure mesh is watertight
         if not mesh.is_watertight:
@@ -114,8 +127,10 @@ def voxel_to_stl(
             mesh = mesh.process(validate=True)
 
     # 8. If we padded the data, adjust the vertices to compensate
+    # 如果我们填充了数据，调整顶点以补偿
     if padding > 0:
         # Calculate the scale factor if we upscaled
+        # 如果我们上采样，计算缩放因子
         scale_factor: float = 1.0
         if upscale_factor and upscale_factor > 1:
             scale_factor = 1.0 / upscale_factor
@@ -124,6 +139,7 @@ def voxel_to_stl(
         mesh.vertices = (mesh.vertices * scale_factor) - (padding * scale_factor)
 
     # 9. Save the mesh as an STL file or return the mesh object
+    # 如果提供输出文件路径，将网格保存为 STL 文件；否则返回网格对象
     if output_file:
         mesh.export(output_file)
         if mesh.is_watertight:
@@ -144,6 +160,7 @@ def voxel_to_stl(
 
 
 # Define the main conversion function
+# 定义主转换函数
 def voxel_to_stl_tpms(
     input_npy_path: Union[str, np.ndarray],
     output_stl_path: Optional[str] = "gyroid_with_shell.stl",
@@ -201,6 +218,7 @@ def voxel_to_stl_tpms(
     t_start = time.time()
 
     # ── 1. Load voxel data and set parameters ───────────────────────────────
+    # 加载输入数据并设置参数
     logging.info("1. Loading input data...")
     t1 = time.time()
     if isinstance(input_npy_path, str):
@@ -212,6 +230,7 @@ def voxel_to_stl_tpms(
     logging.debug(f"   Data shape: {V.shape}   (took {time.time() - t1:.2f}s)")
 
     # ── 2. Define regular & evaluation grids ─────────────────────────────────
+    # 定义常规和评估网格
     logging.info("2. Defining grids...")
     t1 = time.time()
     Nx, Ny, Nz = V.shape
@@ -228,6 +247,7 @@ def voxel_to_stl_tpms(
     logging.debug(f"   Eval dims: {eval_dims}   (took {time.time() - t1:.2f}s)")
 
     # ── 3. Interpolate density to fine grid ──────────────────────────────────
+    # 对精细网格进行密度插值
     logging.info("3. Interpolating density...")
     t1 = time.time()
     interp = RegularGridInterpolator(
@@ -239,6 +259,7 @@ def voxel_to_stl_tpms(
     )
 
     # ── 4. Strömberg nonlinear κ-mapping ─────────────────────────────────────
+    # 应用 Strömberg 非线性 κ-映射
     logging.info("4. Applying Strömberg nonlinear κ-mapping...")
     t1 = time.time()
     alpha = np.array([0.1019, 0, 0.3790, 0, 0.5191, 0, 0])

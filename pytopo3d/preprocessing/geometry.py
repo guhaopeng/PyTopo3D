@@ -2,7 +2,9 @@
 Geometry processing utilities for 3D topology optimization.
 
 This module provides functions for loading and processing geometry data from STL files
+该模块提供了从 STL 文件加载和处理几何数据的函数。
 and creating boundary conditions.
+该模块还提供了创建边界条件的函数。
 """
 
 import logging

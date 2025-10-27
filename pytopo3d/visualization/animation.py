@@ -2,6 +2,7 @@
 Animation utilities for 3D topology optimization.
 
 This module contains functions for creating animations of the optimization process.
+# 该模块包含用于创建优化过程动画的函数。
 """
 
 import logging

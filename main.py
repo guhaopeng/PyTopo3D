@@ -27,6 +27,7 @@ from pytopo3d.visualization.visualizer import (
 def main():
     """
     Main function to run the optimization from command-line arguments.
+    `# 主函数，从命令行参数运行优化
     """
     # Parse command-line arguments
     args = parse_args()
@@ -49,10 +50,12 @@ def main():
         )
 
         # Update args.experiment_name if it was generated in setup_experiment
+        # 如果在 setup_experiment 中生成了 experiment_name，则更新 args.experiment_name
         if not hasattr(args, "experiment_name") or not args.experiment_name:
             args.experiment_name = results_mgr.experiment_name
 
         # Load design space and obstacle data
+        # 加载设计空间和障碍物数据
         design_space_mask, obstacle_mask, combined_obstacle_mask = load_geometry_data(
             nelx=args.nelx,
             nely=args.nely,
@@ -71,6 +74,7 @@ def main():
 
         # --- Build Boundary Conditions ---
         # TODO: Allow passing force_field and support_mask from args or config file
+        # 允许从命令行参数或配置文件传递 force_field 和 support_mask
         force_field = None  # Use default for now
         support_mask = None  # Use default for now
 
@@ -84,6 +88,7 @@ def main():
         )
 
         # Create visualization arrays from actual BCs
+        # 从实际边界条件创建可视化数组
         loads_array, constraints_array = create_bc_visualization_arrays(
             args.nelx, args.nely, args.nelz, ndof, F, fixeddof0
         )

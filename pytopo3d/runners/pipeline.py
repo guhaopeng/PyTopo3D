@@ -3,6 +3,7 @@ High-level pipeline for running topology optimization.
 
 This module provides a complete pipeline for running topology optimization
 from configuration to results generation.
+# 高等级管道模块，用于运行拓扑优化从配置到结果生成的整个过程。
 """
 
 from typing import Any, Dict

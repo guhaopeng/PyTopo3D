@@ -2,6 +2,7 @@
 Visualization utilities for 3D topology optimization.
 
 This module contains functions for displaying the 3D structure.
+# 该模块包含用于显示 3D 结构的函数。
 """
 
 from typing import Any, List, Optional, Union

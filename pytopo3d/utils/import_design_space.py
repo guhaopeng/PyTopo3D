@@ -1,8 +1,11 @@
 """
 Functions for importing STL files and converting them to voxel representations
+# 导入 STL 文件并将其转换为体素表示的函数
 for topology optimization.
+# 该模块提供了从 STL 文件加载和处理几何数据的函数。
 
 This module enables the use of STL geometry to define the design space.
+
 """
 
 import os
@@ -14,6 +17,7 @@ import trimesh
 def import_stl(stl_file: str) -> trimesh.Trimesh:
     """
     Import an STL file and return a trimesh object.
+    #· 从 STL 文件导入网格并返回 trimesh 对象。
 
     Parameters
     ----------

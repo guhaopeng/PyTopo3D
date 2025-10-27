@@ -2,6 +2,7 @@
 Filter utilities for 3D topology optimization.
 
 This module contains functions for building spatial density filters.
+# 构建空间密度滤波器的函数
 """
 
 from typing import Tuple, Union

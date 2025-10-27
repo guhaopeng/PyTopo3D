@@ -3,6 +3,7 @@ Visualization utilities for 3D topology optimization.
 
 This module provides functions for creating visualizations of topology optimization
 results, boundary conditions, and creating animations.
+# 该模块提供了用于创建拓扑优化结果可视化、边界条件可视化和动画的函数。
 """
 
 import logging
