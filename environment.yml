@@ -1,8 +1,8 @@
 name: pytopo3d
 channels:
-  - defaults
-  - conda-forge
-  - nvidia
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge
 dependencies:
   - python=3.10
   - numpy
@@ -12,7 +12,7 @@ dependencies:
   - scikit-image
   - jupyter
   - jupyterlab
-  - networkx
+  - networkxc
   - pillow
   - plotly
   - tqdm

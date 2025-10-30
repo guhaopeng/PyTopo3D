@@ -20,14 +20,14 @@ import numpy as np
 import scipy.sparse as sp
 import matplotlib.pyplot as plt
 
-from pytopo3d.core.compliance import element_compliance
-from pytopo3d.utils.assembly import build_edof, build_force_vector, build_supports
-from pytopo3d.utils.filter import HAS_CUPY, apply_filter, build_filter
-from pytopo3d.utils.logger import get_logger
-from pytopo3d.utils.oc_update import optimality_criteria_update
-from pytopo3d.utils.solver import get_solver
-from pytopo3d.utils.stiffness import lk_H8
-from pytopo3d.visualization.display import display_3D
+from pytopo3d.core.compliance import element_compliance # 计算单元柔度
+from pytopo3d.utils.assembly import build_edof, build_force_vector, build_supports  # 构建单元自由度、力向量、支撑掩码
+from pytopo3d.utils.filter import HAS_CUPY, apply_filter, build_filter  # 构建滤波矩阵
+from pytopo3d.utils.logger import get_logger  # 日志记录器
+from pytopo3d.utils.oc_update import optimality_criteria_update # 优化准则更新
+from pytopo3d.utils.solver import get_solver # 获取求解器
+from pytopo3d.utils.stiffness import lk_H8 # 8节点四面体单元刚度矩阵
+from pytopo3d.visualization.display import display_3D # 3D可视化
 
 logger = get_logger(__name__)
 
@@ -93,15 +93,15 @@ def top3d(
     )
 
     # Force / supports
-    F = build_force_vector(nelx, nely, nelz, ndof, force_field)
-    freedofs0, _ = build_supports(nelx, nely, nelz, ndof, support_mask)
+    F = build_force_vector(nelx, nely, nelz, ndof, force_field) # 力向量
+    freedofs0, _ = build_supports(nelx, nely, nelz, ndof, support_mask) # 支撑掩码
 
     # Element stiffness # 元素刚度矩阵
     KE = lk_H8(nu)
     edofMat, iK, jK = build_edof(nelx, nely, nelz)
     iK0, jK0 = iK - 1, jK - 1
 
-    # Solver
+    # Solver  # 求解器
     solver_func, solver_name = get_solver(use_gpu)
     logger.info(f"Linear solver: {solver_name}")
 
@@ -123,7 +123,7 @@ def top3d(
         )
         Hs_gpu = cp.asarray(Hs)
 
-    # Initial design
+    # Initial design  # 初始设计
     if gpu:
         x_gpu = cp.full((nely, nelx, nelz), volfrac)
         x_gpu[obstacle_gpu] = 0.0
@@ -135,7 +135,7 @@ def top3d(
         xPhys = (H * x.ravel(order="F") / Hs).reshape((nely, nelx, nelz), order="F")
         xPhys[obstacle_mask] = 0.0
 
-    # ─────────────────────── sparsity pattern + scatter map
+    # ─────────────────────── sparsity pattern + scatter map  # 构建全局刚度矩阵的稀疏模式和散射映射
     logger.debug("Building global stiffness pattern & scatter map")
     i_unique, j_unique, dup2uniq = _make_scatter_map(iK0, jK0, ndof)
 
@@ -148,10 +148,9 @@ def top3d(
     else:
         K = sp.csr_matrix((np.zeros(len(i_unique)), (i_unique, j_unique)), shape=(ndof, ndof))
 
-    # ─────────────────────── main loop
+    # ─────────────────────── main loop  # 主循环
     loop, change, c_prev = 0, 1.0, np.inf
     if save_history:
-        history_frequency = max(history_frequency, 500)
         if gpu:
             history["density_history"].append(cp.asnumpy(xPhys_gpu))
         else:
@@ -166,14 +165,14 @@ def top3d(
         # ================================================= GPU
         if gpu:
             # Element-wise stiffness coefficients # 元素刚度系数
-            stiff_gpu = Emin + (xPhys_gpu.ravel(order="F") ** penal) * (E0 - Emin)
+            stiff_gpu = Emin + (xPhys_gpu.ravel(order="F") ** penal) * (E0 - Emin) 
             elem_vals_gpu = cp.kron(stiff_gpu, KE_gpu.ravel())  # 576×nele # 每个元素的刚度系数
 
-            # Scatter-add into CSR.data
+            # Scatter-add into CSR.data # 将元素刚度系数散射添加到CSR矩阵的data中
             K_gpu.data.fill(0.0)
             cp.add.at(K_gpu.data, dup2uniq_gpu, elem_vals_gpu)
 
-            # Solve
+            # Solve # 求解线性方程组
             Kff_gpu = K_gpu[freedofs0_gpu, :][:, freedofs0_gpu]
             Uf_gpu = solver_func(Kff_gpu, F_gpu[freedofs0_gpu])
             U_gpu.fill(0)
@@ -252,7 +251,7 @@ def top3d(
             current_vol = xPhys[~obstacle_mask].mean()
 
         # ------------------------------------------------ logging / history
-        c_delta, c_prev = c - c_prev, c
+        c_delta, c_prev = c - c_prev, c # 目标函数值的变化量
         iter_t = time.time() - t0
 
         if save_history and (loop % history_frequency == 0 or change <= tolx):
@@ -263,7 +262,7 @@ def top3d(
             history["compliance_history"].append(c)
 
         logger.info(
-            f"Iter {loop:4d}: Obj={c:9.4f}, ΔObj={c_delta:9.4f}, "
+            f"Iter {loop:4d}: Obj={c:9.4f}, ΔObj={c_delta:9.4f}, " 
             f"Vol={current_vol:6.3f}, change={change:6.3f}, "
             f"time={iter_t:5.2f}s"
         )

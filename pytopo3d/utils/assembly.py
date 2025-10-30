@@ -190,8 +190,8 @@ def build_supports(
         - fixeddof0: 0-based array of fixed (constrained) DOFs. 
         # 固定自由度索引，基于 0 索引，包含所有被固定的自由度。
     """
-    fixeddof0 = np.array([], dtype=int)  # Initialize as empty array
-    fixednid_0based: np.ndarray = np.array([], dtype=int)  # Ensure defined type
+    fixeddof0 = np.array([], dtype=int)  # Initialize as empty array # 固定自由度索引，基于 0 索引，包含所有被固定的自由度。
+    fixednid_0based: np.ndarray = np.array([], dtype=int)  # Ensure defined type 
 
     if support_mask is None:
         # Default implementation - fixed DOFs on nodes of the left face (x=0)

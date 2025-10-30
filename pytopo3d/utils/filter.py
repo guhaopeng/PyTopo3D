@@ -12,8 +12,10 @@ import scipy.sparse as sp
 from scipy.spatial import cKDTree  # Import cKDTree
 
 # Constants
-FLOAT_EPSILON = 1e-9  # Small epsilon for robust float comparisons
+FLOAT_EPSILON = 1e-9  # Small epsilon for robust float comparisons 
+# 小的浮点数比较阈值，用于避免除零错误
 DIST_EPSILON = 1e-12  # Small epsilon to avoid sqrt of zero
+# 小的浮点数比较阈值，用于避免开方时的零值错误
 
 # Check if CuPy is available for GPU acceleration
 try:
@@ -31,6 +33,8 @@ def build_filter(
     """
     Build the density filter matrix using KD-tree for neighbor search
     but replicating the original integer-based distance calculation for accuracy.
+    # 构建密度滤波器矩阵，使用KD树进行邻居搜索
+    # 但仍使用原始的整数距离计算，确保精度
 
     Parameters
     ----------
@@ -43,32 +47,39 @@ def build_filter(
     -------
     tuple
         (H, Hs) - filter matrix (CSR format) and row sums for normalization.
+        # 返回滤波器矩阵（CSR格式）和行和用于归一化
     """
     nele = nelx * nely * nelz
 
     # 1. Create coordinates for element centers (still needed for KD-Tree)
+    # 为元素中心创建坐标（仍需用于KD树）
     x_coords = np.arange(nelx) + 0.5
     y_coords = np.arange(nely) + 0.5
     z_coords = np.arange(nelz) + 0.5
     # Use 'ij' indexing consistent with element index calculation (k changes fastest)
+    # 为元素中心创建坐标网格（ij索引，k变化最快）
     zz, xx, yy = np.meshgrid(z_coords, x_coords, y_coords, indexing="ij")
     centers = np.vstack(
         (xx.ravel(order="F"), yy.ravel(order="F"), zz.ravel(order="F"))
     ).T
 
     # 2. Build KD-Tree to find potential neighbors efficiently
+    # 为元素中心创建KD树，用于高效查找潜在邻居
     tree = cKDTree(centers)
     # Find indices of all points within distance rmin + epsilon (to be safe)
-    # We will apply the exact distance check later. Add small epsilon for safety.
+    # 查找所有在rmin + epsilon范围内的点（为了安全）
     neighbor_indices_list = tree.query_ball_point(centers, rmin + 1e-9)
 
     # 3. Prepare sparse matrix data using original distance logic
+    # 使用原始距离逻辑准备稀疏矩阵数据  
     iH_list = []
     jH_list = []
     sH_list = []
 
     # Pre-calculate mapping from 0-based element index to 1-based (i, j, k) coords
+    # 为元素中心创建0-based索引到1-based (i, j, k) 坐标的映射
     # This reverses e = (k-1)*nx*ny + (i-1)*ny + (j-1)
+    # 这将0-based索引映射到1-based (i, j, k) 坐标
     e_indices = np.arange(nele)
     k1_all = (e_indices // (nelx * nely)) + 1
     i1_all = ((e_indices % (nelx * nely)) // nely) + 1
@@ -119,12 +130,14 @@ def build_filter(
         sH_list.extend(valid_weights)
 
     # 4. Create sparse matrix H
+    # 创建稀疏矩阵H（COO格式），并转换为CSR格式
     H = sp.coo_matrix(
         (np.array(sH_list), (np.array(iH_list), np.array(jH_list))),
         shape=(nele, nele),
     ).tocsr()
 
     # 5. Calculate row sums Hs for normalization
+    # 计算H的行和Hs，用于归一化
     Hs = np.array(H.sum(axis=1)).flatten()
     # Handle cases where Hs might be zero (e.g., isolated elements with rmin=0)
     Hs[Hs == 0] = 1.0

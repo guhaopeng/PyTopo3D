@@ -1,8 +1,10 @@
 """
 Logging utility for the topology optimization package.
+# 日志工具模块，用于拓扑优化包
 
 This module provides a consistent interface for logging messages
 across the package with different severity levels.
+# 此模块提供了一个一致的接口，用于在包中记录不同严重级别的消息
 """
 
 import logging
@@ -20,6 +22,7 @@ def setup_logger(
 ) -> logging.Logger:
     """
     Set up and configure a logger with the specified parameters.
+    # 设置并配置一个记录器，根据指定参数进行配置
 
     Parameters
     ----------
@@ -80,11 +83,13 @@ logger = setup_logger()
 def get_logger(name: Optional[str] = None) -> logging.Logger:
     """
     Get a logger with the specified name.
+    # 获取指定名称的记录器
 
     Parameters
     ----------
     name : str, optional
         Name of the logger. If None, the default package logger is returned.
+    # 如果未指定名称，则返回默认包记录器
 
     Returns
     -------

@@ -35,13 +35,13 @@ argparse.Namespace解析后的命令行参数。
     # Basic parameters
     basic_group = parser.add_argument_group("Basic parameters") #创建基本参数组
     basic_group.add_argument(
-        "--nelx", type=int, default=60, help="Number of elements in x direction"
+        "--nelx", type=int, default=32, help="Number of elements in x direction"
     )
     basic_group.add_argument(
-        "--nely", type=int, default=30, help="Number of elements in y direction"
+        "--nely", type=int, default=32, help="Number of elements in y direction"
     )
     basic_group.add_argument(
-        "--nelz", type=int, default=20, help="Number of elements in z direction"
+        "--nelz", type=int, default=32, help="Number of elements in z direction"
     )
     basic_group.add_argument(
         "--volfrac", type=float, default=0.3, help="Volume fraction constraint"

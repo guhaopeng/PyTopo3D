@@ -3,6 +3,7 @@ Optimality Criteria (OC) update scheme for 3D topology optimization.
 
 This module contains the function for updating design variables
 using the optimality criteria method.
+# 优化准则更新方案
 """
 
 from typing import Tuple, Union
@@ -23,7 +24,7 @@ except ImportError:
 
 
 def optimality_criteria_update(
-    x: Union[np.ndarray, "cp.ndarray"],
+    x: Union[np.ndarray, "cp.ndarray"], #x是当前的设计变量
     dc: Union[np.ndarray, "cp.ndarray"],
     dv: Union[np.ndarray, "cp.ndarray"],
     volfrac: float,
@@ -37,28 +38,28 @@ def optimality_criteria_update(
     """
     Performs the optimality criteria (OC) update with bisection on the Lagrange
     multiplier. The volume constraint is enforced only on the design domain
-    (excluding obstacle elements).
+    (excluding obstacle elements). # 优化准则更新方案，仅在设计域（不包括障碍物元素）上强制执行体积约束
 
     Parameters
     ----------
     x : ndarray or cupy.ndarray
-        Current design variables.
+        Current design variables.      # 当前的设计变量
     dc : ndarray or cupy.ndarray
-        Sensitivity of compliance.
+        Sensitivity of compliance.     #柔度灵敏度
     dv : ndarray or cupy.ndarray
-        Sensitivity of volume.
+        Sensitivity of volume.         # 体积灵敏度
     volfrac : float
         Target volume fraction.
     H : scipy.sparse.csr_matrix or cupyx.scipy.sparse.csr_matrix
-        Filter matrix.
+        Filter matrix.                     # 过滤矩阵
     Hs : ndarray or cupy.ndarray
-        Filter normalization factors.
+        Filter normalization factors.    # 过滤矩阵的归一化因子
     nele : int
-        Total number of elements.
-    obstacle_mask : ndarray or cupy.ndarray of bool
-        Mask indicating obstacle elements.
+        Total number of elements.        # 总元素数量
+    obstacle_mask : ndarray or cupy.ndarray of bool 
+        Mask indicating obstacle elements.      # 障碍物元素的掩码
     design_nele : int
-        Number of elements in design domain (not obstacles).
+        Number of elements in design domain (not obstacles).    # 设计域中的元素数量（不包括障碍物）
     use_gpu : bool, optional
         Whether to use GPU acceleration if available. Default is False.
 
@@ -122,21 +123,21 @@ def optimality_criteria_update(
         # Create result on GPU
         xnew_gpu = x_gpu.copy()
 
-        # OC update loop (on GPU)
+        # OC update loop (on GPU)  # 优化准则更新循环（在GPU上）
         while (l2 - l1) / (l1 + l2) > 1e-3:
             lmid = 0.5 * (l2 + l1)
             
-            # GPU-accelerated OC update
+            # GPU-accelerated OC update #
             update_term = -dc_gpu / (dv_gpu * lmid)
             
-            # Handle potential issues
+            # Handle potential issues # 处理潜在问题
             update_term[dv_gpu < 1e-9] = 0.0
             update_term[update_term < 0] = 0.0
             
-            # Calculate updated x
+            # Calculate updated x  # 计算更新后的设计变量
             x_candidate_gpu = x_gpu * cp.sqrt(update_term)
             
-            # Apply move limits and obstacles
+            # Apply move limits and obstacles  # 应用移动限制和障碍物
             x_candidate_gpu = cp.clip(
                 x_candidate_gpu,
                 cp.maximum(0.0, x_gpu - move),
@@ -144,8 +145,8 @@ def optimality_criteria_update(
             )
             x_candidate_gpu[obstacle_mask_gpu] = 0.0
             
-            # Apply filter directly using our improved apply_filter function
-            # This avoids unnecessary CPU-GPU transfers
+            # Apply filter directly using our improved apply_filter function  # 直接应用过滤矩阵（使用改进的apply_filter函数）
+            # This avoids unnecessary CPU-GPU transfers  # 避免不必要的CPU-GPU传输
             xPhysCandidate_gpu = apply_filter(
                 H_gpu, 
                 x_candidate_gpu, 
@@ -155,9 +156,9 @@ def optimality_criteria_update(
             )
             xPhysCandidate_gpu[obstacle_mask_gpu] = 0.0
             
-            # Check volume constraint (remaining on GPU)
-            vol_constraint = cp.sum(xPhysCandidate_gpu[design_cells_gpu])
-            if vol_constraint > volfrac * design_nele:
+            # Check volume constraint (remaining on GPU)  # 检查体积约束（在GPU上）
+            vol_constraint = cp.sum(xPhysCandidate_gpu[design_cells_gpu]) # 计算设计域中体素的体积总和
+            if vol_constraint > volfrac * design_nele:  # 如果体积约束大于目标体积分数乘以设计域元素数量
                 l1 = lmid
             else:
                 l2 = lmid
@@ -165,7 +166,7 @@ def optimality_criteria_update(
             xnew_gpu = x_candidate_gpu
         
         # Calculate change on GPU
-        change = float(cp.max(cp.abs(xnew_gpu - x_gpu)))
+        change = float(cp.max(cp.abs(xnew_gpu - x_gpu)))  # 最大变化量
         
         # Return GPU array if input was GPU or use_gpu=True
         if isinstance(x, cp.ndarray) or use_gpu:
