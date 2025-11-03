@@ -8,6 +8,8 @@ from pytopo3d.core.optimizer import top3d
 from pytopo3d.utils.assembly import build_force_vector, build_supports
 from pytopo3d.visualization.display import display_3D
 
+from show_history import ivs
+
 # 创建结果目录
 result_dir = os.path.join('results', f'topo3d_{datetime.now().strftime("%Y%m%d_%H%M%S")}')
 os.makedirs(os.path.join(result_dir, 'exports'), exist_ok=True)
@@ -41,56 +43,33 @@ disp_thres = 0.5  # 显示阈值
 ndof = 3 * (nelx + 1) * (nely + 1) * (nelz + 1)
 
 # 找到存在体素的最小x值
-x_with_voxels = np.where(np.any(initial_density > 0.5, axis=(0, 2)))[0]
+x_with_voxels = np.where(np.any(initial_density > 0.5, axis=(0, 2)))[0] #(0,2 )指的是在y,z方向上存在体素
 min_x = x_with_voxels[0] if len(x_with_voxels) > 0 else 0
 print(f"最小x值：{min_x}")
-
-#y_with_voxels = np.where(np.any(initial_density > 0.5, axis=(1, 2)))[0]
-#min_y = y_with_voxels[0] if len(y_with_voxels) > 0 else 0
-#print(f"最小y值：{min_y}")
-
-# 定义四个支撑区域的x和z范围
-#support_regions = [
-#    (range(10, 13), range(10, 13)),  # 区域1: x=10-12, z=10-12
-#    (range(20, 23), range(20, 23)),  # 区域2: x=20-22, z=20-22
-#    (range(10, 13), range(20, 23)),  # 区域3: x=10-12, z=20-22
-#    (range(20, 23), range(10, 13))   # 区域4: x=20-22, z=10-12
-#]
-
-# 找到最小y平面上所有的体素位置
-#min_y_mask = (initial_density[min_y] > 0.5)
-#min_y_voxels = np.where(min_y_mask)
+#print("x0平面大于0.5的体素位置：")
+#print(np.where(initial_density[:, min_x, :] > 0.5))
 
 # 找到最小x平面上所有的体素位置
-min_x_mask = (initial_density[:, min_x, :] > 0.5)
-min_x_voxels = np.where(min_x_mask)
+#min_x_mask = (initial_density[:, min_x, :] > 0.5)
+#min_x_voxels = np.where(min_x_mask)
 
 # 设置支撑条件
 fixed_nodes = []
 
-# 将最小y平面上的所有体素位置添加为固定节点
-#for i in range(len(min_y_voxels[0])):  # min_y_voxels[0]是x坐标，min_y_voxels[1]是z坐标
-#    x = min_y_voxels[0][i]
-#    z = min_y_voxels[1][i]
-#    if x < nelx and z < nelz:
-#        node = x + min_y * (nelx+1) + z * (nelx+1) * (nely+1)
+# 将最小x平面上的所有体素位置添加为固定节点
+#for i in range(len(min_x_voxels[0])):  # min_x_voxels[0]是y坐标，min_x_voxels[1]是z坐标
+#    y = min_x_voxels[0][i]
+#    z = min_x_voxels[1][i]
+#    if y < nely and z < nelz:
+#        node = min_x + y * (nelx+1) + z * (nelx+1) * (nely+1)
 #        fixed_nodes.append(int(node))
 
-# 将最小x平面上的所有体素位置添加为固定节点
-for i in range(len(min_x_voxels[0])):  # min_x_voxels[0]是y坐标，min_x_voxels[1]是z坐标
-    y = min_x_voxels[0][i]
-    z = min_x_voxels[1][i]
-    if y < nely and z < nelz:
-        node = min_x + y * (nelx+1) + z * (nelx+1) * (nely+1)
-        fixed_nodes.append(int(node))
+# 在最小x平面上添加四个固定支撑点
+support_points = [(10, 10), (10, 20), (20, 10), (20, 20)]  # (y, z)坐标
+for y, z in support_points:
+    node = min_x + y * (nelx+1) + z * (nelx+1) * (nely+1)
+    fixed_nodes.append(int(node))
 
-# 在最小y平面上为原有支撑区域添加固定节点
-#for x_range, z_range in support_regions:
-#    for x in x_range:
-#        for z in z_range:
-#            # 在最小y平面上的节点
-#            node = x + min_y * (nelx+1) + z * (nelx+1) * (nely+1)
-#            fixed_nodes.append(int(node))
 
 # 设置载荷条件
 force_nodes = []
@@ -169,6 +148,11 @@ for node in fixed_nodes:
     if x < nelx and y < nely and k < nelz:
         support_mask[y, x, k] = True
 
+#obstacle_mask = None # 障碍物掩码
+obstacle_mask = np.zeros((nely, nelx, nelz), dtype=bool)
+    # 自定义障碍物：[y范围, x范围, z范围]
+obstacle_mask[11:21, 11:20, 11:20] = True
+
 # 执行优化
 print("Starting optimization...")
 result = top3d(
@@ -179,9 +163,10 @@ result = top3d(
     penal=penal,
     rmin=rmin,
     disp_thres=disp_thres,
+    obstacle_mask=obstacle_mask,  # 使用障碍物掩码
     force_field=force_field,  # 使用力场
     support_mask=support_mask,  # 使用支撑掩码
-    maxloop=300,  # 最大迭代次数
+    maxloop=2,  # 最大迭代次数
     use_gpu=True,  # 使用GPU加速
     save_history=True,  # 保存优化历史
     history_frequency=2  # 每2次迭代保存一次
@@ -190,6 +175,45 @@ result = top3d(
 # 解包结果
 xPhys, history = result if isinstance(result, tuple) else (result, None)
 
+# 分析密度场的变化
+if history is not None:
+    # 获取所有迭代步骤的密度场
+    density_fields = history.get('density_history', [])
+    
+    if density_fields:
+        # 计算每一步相对于初始密度场的变化
+        density_changes = []
+        density_fields_array = []
+        
+        # 保存每一步的密度场
+        for i, step_density in enumerate(density_fields):
+            # 保存当前步骤的密度场
+            density_fields_array.append(step_density)
+            # 计算相对于初始密度场的变化
+            change = step_density - initial_density
+            density_changes.append(change)
+            if  i== 1:
+            # 保存单独的密度场和变化
+               np.save(os.path.join(result_dir, f'density_field_step_{i}.npy'), step_density)
+               np.save(os.path.join(result_dir, f'density_change_step_{i}.npy'), change)
+               print(f"第{i+1}步密度场变化范围: {np.min(change):.3f} 到 {np.max(change):.3f}")
+               print(f"第{i+1}步的密度场变化形状：", change.shape)
+               change1 = np.load(os.path.join(result_dir,"density_change_step_1.npy"))
+               print(change1.shape)
+        
+        # 将所有步骤的密度场和变化转换为数组并保存
+        #density_fields_array = np.array(density_fields_array)
+        #density_changes = np.array(density_changes)
+        
+        #np.save(os.path.join(result_dir, 'density_fields.npy'), density_fields_array)
+        #np.save(os.path.join(result_dir, 'density_changes.npy'), density_changes)
+        
+        #print(f"\n优化过程信息:")
+        #print(f"总迭代步数: {len(density_fields)}")
+        #print(f"密度场数组形状: {density_fields_array.shape}")
+        #print(f"密度场变化范围: {np.min(density_changes):.3f} 到 {np.max(density_changes):.3f}")
+        #print(f"最终一步密度场范围: {np.min(density_fields[-1]):.3f} 到 {np.max(density_fields[-1]):.3f}")
+
 # 获取最终的体积分数和收敛变化量
 current_vol = np.mean(xPhys)
 change = 0.0  # 由于无法直接获取change值，这里设置为0
@@ -197,6 +221,7 @@ change = 0.0  # 由于无法直接获取change值，这里设置为0
 # 保存优化结果
 np.save('optimized_design.npy', xPhys)
 print("Optimization complete. Result saved to optimized_design.npy")
+
 
 # 保存优化历史
 np.save(os.path.join(result_dir, 'optimization_history.npy'), history)
@@ -223,21 +248,21 @@ plt.close()
 
 print(f"\nResults saved in directory: {result_dir}")
 
-# 可视化边界条件
+# 创建支撑密度场
 support_density = np.zeros((nely, nelx, nelz))  # 使用 (y, x, z) 坐标系统
 
-#for x_range, z_range in support_regions:
-#    for x in x_range:
-#        for z in z_range:
-#            support_density[0, x, z] = 1.0  # 在 y=0 平面（xz平面）上添加支撑
-
 # 使用最小x平面上的所有支撑点来生成支撑密度场
-min_x_mask = (initial_density[:, min_x, :] > 0.5)
-for y in range(nely):
-    for z in range(nelz):
-        if min_x_mask[y, z]:
-            support_density[y, min_x, z] = 1.0  # 在最小x平面上设置支撑
+#min_x_mask = (initial_density[:, min_x, :] > 0.5)
+#for y in range(nely):
+#    for z in range(nelz):
+#        if min_x_mask[y, z]:
+#            support_density[y, min_x, z] = 1.0  # 在最小x平面上设置支撑
+support_points = support_points
+for y,z in support_points:
+    support_density[y,min_x,z] = 1.0
 
+
+# 创建力密度场
 force_density = np.zeros((nely, nelx, nelz))  # 使用 (y, x, z) 坐标系统
 for node in force_nodes:
     # 从节点索引计算坐标
@@ -249,12 +274,20 @@ for node in force_nodes:
     if i < nelx and j < nely and k < nelz:
         force_density[j, i, k] = 1.0  # 使用 (y, x, z) 顺序
 
+# 显示和保存边界条件和障碍物
 fig = display_3D(
-    [support_density, force_density],
-    thresholds=[0.5, 0.5],
-    colors=['red', 'blue'],
-    labels=['Support', 'Force'],
-    alphas=[0.9, 0.9]
+    [support_density, force_density, obstacle_mask],  # 添加 obstacle_mask 到可视化中
+    thresholds=[0.5, 0.5, 0.5],  # 为每个数组设置阈值
+    colors=['red', 'blue', 'yellow'],  # 添加黄色表示障碍物
+    labels=['Support', 'Force', 'Obstacle'],  # 添加障碍物标签
+    alphas=[0.9, 0.9, 0.5]  # 设置障碍物透明度为0.5
 )
 plt.savefig(os.path.join(result_dir, 'visualizations', 'boundary_conditions_and_obstacles.png'))
 plt.close()
+
+# 可视化初始设置
+#print("加载历史路径：", os.path.join(result_dir, 'optimization_history.npy'))
+#ivs(os.path.join(result_dir, 'optimization_history.npy'), os.path.join(result_dir, 'visualizations'))
+
+
+

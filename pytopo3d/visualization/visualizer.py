@@ -17,7 +17,7 @@ from pytopo3d.visualization.animation import save_optimization_gif
 from pytopo3d.visualization.runner import create_visualization
 
 
-def visualize_initial_setup(
+def visualize_initial_setup( # 创建并保存初始可视化，显示边界条件和障碍物
     nelx: int,
     nely: int,
     nelz: int,
@@ -26,7 +26,7 @@ def visualize_initial_setup(
     experiment_name: str,
     logger: Optional[logging.Logger] = None,
     results_mgr: Optional[ResultsManager] = None,
-    combined_obstacle_mask: Optional[np.ndarray] = None,
+    obstacle_mask: Optional[np.ndarray] = None,  # 改为 obstacle_mask
 ) -> str:
     """
     Create and save initial visualization showing boundary conditions and obstacles.
@@ -40,15 +40,18 @@ def visualize_initial_setup(
         experiment_name: Name of the experiment
         logger: Configured logger
         results_mgr: Results manager instance
-        combined_obstacle_mask: Combined obstacle and design space mask
+        obstacle_mask: Obstacle mask array  # 更新参数说明
 
     Returns:
         Path to the saved visualization
     """
     # Create obstacle array for visualization
     obstacle_array = (
-        combined_obstacle_mask.astype(float)
-        if combined_obstacle_mask is not None
+        # combined_obstacle_mask.astype(float)
+       # if combined_obstacle_mask is not None
+       
+        obstacle_mask.astype(float)  # 使用 obstacle_mask
+        if obstacle_mask is not None
         else np.zeros((nely, nelx, nelz))
     )
 

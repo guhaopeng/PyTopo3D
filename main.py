@@ -7,20 +7,20 @@ This script provides a command-line interface to run the topology optimization.
 
 import sys
 
-from pytopo3d.cli.parser import parse_args
-from pytopo3d.preprocessing.geometry import load_geometry_data
+from pytopo3d.cli.parser import parse_args # 解析命令行参数
+from pytopo3d.preprocessing.geometry import load_geometry_data # 加载几何数据
 from pytopo3d.runners.experiment import (
-    execute_optimization,
-    export_result_to_stl,
-    setup_experiment,
+    execute_optimization, # 执行优化
+    export_result_to_stl, # 导出结果为STL文件
+    setup_experiment, # 设置实验
 )
-from pytopo3d.utils.assembly import build_force_vector, build_supports
-from pytopo3d.utils.boundary import create_bc_visualization_arrays
-from pytopo3d.utils.metrics import collect_metrics
+from pytopo3d.utils.assembly import build_force_vector, build_supports # 构建力向量和支持
+from pytopo3d.utils.boundary import create_bc_visualization_arrays # 创建边界条件可视化数组
+from pytopo3d.utils.metrics import collect_metrics # 收集指标
 from pytopo3d.visualization.visualizer import (
-    create_optimization_animation,
-    visualize_final_result,
-    visualize_initial_setup,
+    create_optimization_animation, # 创建优化动画
+    visualize_final_result, # 可视化最终结果
+    visualize_initial_setup, # 可视化初始设置
 )
 
 
@@ -39,7 +39,7 @@ def main():
             quiet=args.quiet,
             log_level=args.log_level,
             log_file=args.log_file,
-            experiment_name=getattr(args, "experiment_name", None),
+            experiment_name=getattr(args, "experiment_name", None), # 实验名称
             description=args.description,
             nelx=args.nelx,
             nely=args.nely,
@@ -63,7 +63,8 @@ def main():
             design_space_stl=getattr(args, "design_space_stl", None),
             pitch=getattr(args, "pitch", 1.0),
             invert_design_space=getattr(args, "invert_design_space", False),
-            obstacle_config=getattr(args, "obstacle_config", None),
+            obstacle_config=getattr(args, "obstacle_config", None),  # 允许从命令行参数传递障碍物配置文件路径
+            #obstacle_config="examples/obstacles_config_cylinder.json",  # 直接指定障碍物配置文件路径
             experiment_name=args.experiment_name,
             logger=logger,
             results_mgr=results_mgr,
@@ -95,6 +96,7 @@ def main():
         logger.info("Generated boundary condition visualization arrays")
 
         # Create and save initial visualization
+        # 创建并保存初始可视化
         visualize_initial_setup(
             nelx=args.nelx,
             nely=args.nely,
@@ -104,10 +106,12 @@ def main():
             experiment_name=args.experiment_name,
             logger=logger,
             results_mgr=results_mgr,
-            combined_obstacle_mask=combined_obstacle_mask,
+            # combined_obstacle_mask=combined_obstacle_mask,
+            obstacle_mask=obstacle_mask,  # 修改参数名以匹配 visualizer.py
         )
 
         # Run the optimization - Passing force_field and support_mask
+        # 执行优化 - 传递 force_field 和 support_mask
         xPhys, history, run_time = execute_optimization(
             nelx=args.nelx,
             nely=args.nely,
@@ -122,8 +126,8 @@ def main():
             # Removed F, freedofs0, fixeddof0
             tolx=getattr(args, "tolx", 0.01),
             maxloop=getattr(args, "maxloop", 2000),
-            create_animation=getattr(args, "create_animation", False),
-            animation_frequency=getattr(args, "animation_frequency", 10),
+            create_animation=True,  # 默认开启动画生成
+            animation_frequency=10,  # 每2次迭代保存一次历史记录
             logger=logger,
             combined_obstacle_mask=combined_obstacle_mask,
             use_gpu=args.gpu,
@@ -133,7 +137,8 @@ def main():
         result_path = results_mgr.save_result(xPhys, "optimized_design.npy")
         logger.debug(f"Optimization result saved to {result_path}")
 
-        # Create visualization of the final result
+        # Create visualization of the final result 
+        # 可视化最终结果
         visualize_final_result(
             nelx=args.nelx,
             nely=args.nely,
@@ -148,7 +153,7 @@ def main():
             constraints_array=constraints_array,
         )
 
-        # Create animation if history was captured
+        # Create animation if history was captured # 创建优化动画（如果捕获了历史记录）
         gif_path = None
         if history:
             gif_path = create_optimization_animation(
@@ -178,7 +183,7 @@ def main():
             result_path=result_path,
         )
 
-        # Collect and save metrics
+        # Collect and save metrics # 收集并保存指标
         metrics = collect_metrics(
             nelx=args.nelx,
             nely=args.nely,
@@ -191,7 +196,7 @@ def main():
             maxloop=getattr(args, "maxloop", 2000),
             design_space_stl=getattr(args, "design_space_stl", None),
             pitch=getattr(args, "pitch", 1.0),
-            obstacle_config=getattr(args, "obstacle_config", None),
+            obstacle_config = "D:/3dtp/examples/obstacles_config_cylinder.json", # 这是默认的圆柱形障碍物配置
             animation_fps=getattr(args, "animation_fps", 5),
             stl_level=getattr(args, "stl_level", 0.5),
             smooth_stl=getattr(args, "smooth_stl", False),

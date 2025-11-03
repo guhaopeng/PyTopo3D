@@ -27,7 +27,7 @@ def load_geometry_data(
     design_space_stl: Optional[str] = None,
     pitch: float = 1.0,
     invert_design_space: bool = False,
-    obstacle_config: Optional[str] = None,
+    obstacle_config: Optional[str] = None, # 障碍物配置文件路径
     experiment_name: str = "experiment",
     logger: Optional[logging.Logger] = None,
     results_mgr: Optional[ResultsManager] = None,
@@ -111,17 +111,28 @@ def load_geometry_data(
         design_space_mask = np.ones((nely, nelx, nelz), dtype=bool)
 
     # Create obstacle mask if requested
-    obstacle_mask = None
+    # 如果提供了障碍物配置文件，解析并创建障碍物掩码
+    
+    #obstacle_mask = None # 障碍物掩码
+    obstacle_mask = np.zeros((nely, nelx, nelz), dtype=bool)
+    # 自定义障碍物：[y范围, x范围, z范围]
+    obstacle_mask[5:15, 15:20, 5:25] = True
+
+    # 记录硬编码的障碍物
+    hardcoded_obstacle = obstacle_mask.copy()
 
     # Handle obstacle config file case
+    # 如果提供了障碍物配置文件，解析并创建障碍物掩码
     if obstacle_config:
         try:
             shape = (nely, nelx, nelz)
             obstacle_mask = parse_obstacle_config_file(obstacle_config, shape)
+            # 合并配置文件中的障碍物和硬编码的障碍物
+            obstacle_mask = np.logical_or(obstacle_mask, hardcoded_obstacle)
             n_obstacle_elements = np.count_nonzero(obstacle_mask)
             if logger:
                 logger.info(
-                    f"Loaded {n_obstacle_elements} obstacle elements from {obstacle_config}"
+                    f"Loaded {n_obstacle_elements} obstacle elements (including hardcoded obstacles)"
                 )
 
             # Copy the obstacle config file to the experiment directory if results_mgr is provided
@@ -136,19 +147,24 @@ def load_geometry_data(
             raise
     else:
         if logger:
+            n_obstacle_elements = np.count_nonzero(obstacle_mask)
             logger.info(
-                "No obstacle configuration provided, creating a default empty obstacle mask"
+                f"No obstacle configuration provided, using hardcoded obstacles ({n_obstacle_elements} elements)"
             )
-        if design_space_stl:
-            obstacle_mask = np.zeros_like(design_space_mask)
-        else:
-            obstacle_mask = np.zeros((nely, nelx, nelz), dtype=bool)
+        # 移除这部分代码，保留之前设置的硬编码障碍物
+        # if design_space_stl:
+        #     obstacle_mask = np.zeros_like(design_space_mask)
+        # else:
+        #     obstacle_mask = np.zeros((nely, nelx, nelz), dtype=bool)
 
-    # Combine design space and obstacle masks
+        
+
+    # Combine design space and obstacle masks 
     # Elements outside the design space are treated as obstacles
     combined_obstacle_mask = obstacle_mask.copy()
     if design_space_mask is not None:
         # Areas outside design space (False values) become obstacles (True in obstacle mask)
+        # 设计空间之外的区域（False 值）成为障碍物（在障碍物掩码中为 True）
         combined_obstacle_mask = np.logical_or(
             combined_obstacle_mask, ~design_space_mask
         )

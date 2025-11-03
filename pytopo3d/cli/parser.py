@@ -70,17 +70,17 @@ argparse.Namespace解析后的命令行参数。
     )
 
     # Performance parameters
-    performance_group = parser.add_argument_group("Performance parameters")
-    performance_group.add_argument(
+    performance_group = parser.add_argument_group("Performance parameters") # 性能参数组
+    performance_group.add_argument( # 启用 GPU 加速时的默认值为 False（需要 CuPy）
         "--gpu",
         action="store_true",
-        default=False,
+        default=True,
         help="Enable GPU acceleration when available (requires CuPy)",  #当可用时启用 GPU 加速（需要 CuPy）
     )
 
     # Output parameters
-    output_group = parser.add_argument_group("Output parameters")
-    output_group.add_argument(
+    output_group = parser.add_argument_group("Output parameters") # 输出参数组
+    output_group.add_argument( # 优化设计的输出文件名
         "--output",
         type=str,
         default="optimized_design.npy",
@@ -124,9 +124,9 @@ argparse.Namespace解析后的命令行参数。
 
     # Animation parameters
     animation_group = parser.add_argument_group("Animation parameters")
-    animation_group.add_argument(
+    animation_group.add_argument( # 创建优化过程的 GIF 动画
         "--create-animation",
-        action="store_true",
+        action="store_true",   # 是否创建优化过程的 GIF 动画 （默认值：True）
         help="Create a GIF animation of the optimization process",  #创建优化过程的 GIF 动画
     )
     animation_group.add_argument(
@@ -155,25 +155,29 @@ argparse.Namespace解析后的命令行参数。
         type=str,
         help="Path to an STL file defining the design space geometry",  #定义设计空间几何的 STL 文件路径
     )
-    design_space_group.add_argument(
-        "--pitch",
+    design_space_group.add_argument( # 体素化 STL 时，体素中心之间的距离（较小值创建更精细的细节）
+        "--pitch", 
         type=float,
         default=1.0,
         help="Distance between voxel centers when voxelizing STL (smaller values create finer detail)",  #当体素化 STL 时，体素中心之间的距离（较小值创建更精细的细节）
     )
-    design_space_group.add_argument(
-        "--invert-design-space",
+    design_space_group.add_argument( # 反转设计空间（将 STL 视为_void 空间而不是设计空间）
+        "--invert-design-space", #
         action="store_true",
         help="Invert the design space (treat STL as void space rather than design space)",  #反转设计空间（将 STL 视为_void 空间而不是设计空间）
     )
 
     # Obstacle related arguments
+    # 障碍物相关参数组
     obstacle_group = parser.add_argument_group("Obstacle parameters")
     obstacle_group.add_argument(
-        "--obstacle-config", type=str, help="Path to a JSON file defining obstacles"  #定义障碍物的 JSON 文件路径
+        "--obstacle-config", 
+        type=str, 
+        help="Path to a JSON file defining obstacles"  #定义障碍物的 JSON 文件路径
     )
 
     # Logging parameters
+    # 日志参数组
     log_group = parser.add_argument_group("Logging parameters")
     log_group.add_argument(
         "--log-level",
@@ -217,7 +221,7 @@ def generate_experiment_name(args: argparse.Namespace) -> str:
     dims = f"{args.nelx}x{args.nely}x{args.nelz}"  # 设计空间维度（nelx x nely x nelz）
 
     # Include obstacle info in experiment name 
-    obstacle_type = "no_obstacle"
+    obstacle_type = "no_obstacle" # 障碍物类型（默认值：无障碍物）
     if args.obstacle_config:
         obstacle_type = os.path.basename(args.obstacle_config).replace(".json", "")  # 从障碍物配置文件路径中提取障碍物类型（去掉.json 扩展名）
 

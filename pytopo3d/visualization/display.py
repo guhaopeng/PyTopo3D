@@ -20,6 +20,7 @@ from numpy.typing import NDArray
 class Arrow3D(FancyArrowPatch):
     """
     A 3D arrow for use in matplotlib 3D plots.
+    # 用于 matplotlib 3D 图中的 3D 箭头。
     """
 
     def __init__(self, xs, ys, zs, *args, **kwargs):
@@ -37,6 +38,7 @@ def _add_axis_legend(ax, fig):
     """
     Add axis direction indicators as a separate legend/annotation in the corner
     of the figure rather than on the plot itself.
+    # 添加轴方向指示器作为单独的图例/注释，而不是在图本身上。
 
     Parameters
     ----------
@@ -46,14 +48,19 @@ def _add_axis_legend(ax, fig):
         The figure object
     """
     # Create a small axis for the legend in the bottom right corner
+    # 创建一个小轴用于图例，位置在右下角
     # Use a smaller area and position it to not interfere with the title
+    # 使用较小的区域并将其位置调整到不干扰标题
     legend_ax = fig.add_axes([0.75, 0.05, 0.2, 0.2], projection="3d")
 
     # Create short arrows for X, Y, Z with equal length
+    # 创建等长的 X、Y、Z 轴箭头
     # Start from origin point
+    # 从原点开始
     origin = np.array([0, 0, 0])
 
     # Create arrows for each axis with same length
+    # 创建等长的 X、Y、Z 轴箭头
     arrow_length = 0.8
 
     # X-axis (Red)
@@ -129,12 +136,12 @@ def _add_axis_legend(ax, fig):
 
 
 def display_3D(
-    densities: Union[NDArray[np.float64], List[NDArray[np.float64]]],
-    thresholds: Union[float, List[float]] = 0.5,
-    colors: Union[str, List[str]] = "#000000",
-    common_threshold: Optional[float] = None,
-    labels: Optional[Union[str, List[str]]] = None,
-    alphas: Union[float, List[float]] = 0.9,
+    densities: Union[NDArray[np.float64], List[NDArray[np.float64]]], # 3D 数组或数组列表，每个数组表示一个元素的密度
+    thresholds: Union[float, List[float]] = 0.5, # 显示阈值，元素密度大于阈值时显示
+    colors: Union[str, List[str]] = "#000000", # 每个密度数组的颜色
+    common_threshold: Optional[float] = None, # 公共阈值，所有数组使用相同的阈值
+    labels: Optional[Union[str, List[str]]] = None, # 每个密度数组的标签，用于图例
+    alphas: Union[float, List[float]] = 0.9, # 每个密度数组的透明度
 ) -> Figure:
     """
     Display multiple 3D structures using Poly3DCollection with color gradients.
